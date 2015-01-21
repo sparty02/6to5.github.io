@@ -139,6 +139,10 @@
     return this.input.getValue();
   };
 
+  REPL.prototype.setSource = function (code) {
+    return this.input.setValue(code);
+  };
+
   REPL.prototype.compile = function () {
     
     var transformed;
@@ -233,6 +237,11 @@
   
   repl.input.on('change', _.debounce(onSourceChange, 500));
   repl.$toolBar.on('change', onSourceChange);
+  $('#examples').on('change', function () {
+    var id = $(this).val();
+    var code = $('#example'+id).text();
+    repl.setSource(code);
+  });
 
   repl.compile();
 
