@@ -15,6 +15,9 @@
 
   UriUtils.parseQuery = function () {
     var query = window.location.hash.replace(/^\#\?/, '');
+    if (!query) {
+      return null;
+    }
 
     return query.split('&').map(function(parm) {
       var splitPoint = parm.indexOf('=');
@@ -24,7 +27,9 @@
         value : parm.substring(splitPoint + 1)
       };
     }).reduce(function(parms, parm){
-      parms[parm.key] = UriUtils.decode(parm.value);
+      if (parm.key && parm.value) {
+        parms[parm.key] = UriUtils.decode(parm.value);
+      }
       return parms;
     }, {});
   };
@@ -35,6 +40,37 @@
     }).join('&');
 
     window.location.hash = '?' + query;
+  };
+
+  /*
+   * Long term storage for persistence of state/etc
+   */
+  function StorageService () {}
+
+  StorageService.prototype.get = function (key) {
+    var value;
+    var storage = window.localStorage;
+    var object;
+
+    if (storage) {
+      try {
+        value = storage.getItem(key);
+        object = JSON.parse(value);
+      } catch(e) {}
+    }
+    return object;
+  };
+
+  StorageService.prototype.set = function (key, value) {
+    var storage = window.localStorage;
+    var json;
+
+    if (storage) {
+      try {
+        json = JSON.stringify(value);
+        storage.setItem(key, json);
+      } catch(e) {}
+    }
   };
 
   /*
@@ -78,7 +114,19 @@
     };
   }
 
-  function Options () {
+  function softMerge (dest, source) {
+    return Object.keys(dest).reduce(function (dest, key) {
+      var sourceVal = source[key];
+      
+      if (sourceVal !== null && sourceVal !== 'undefined') {
+        dest[key] = sourceVal;
+      }
+
+      return dest;
+    }, dest);
+  }
+
+  function Options (initial) {
     var $experimental = $('#option-experimental');
     var $playground = $('#option-playground');
     var $evaluate = $('#option-evaluate');
@@ -92,32 +140,30 @@
       'loose': $checkbox($loose)
     });
 
-    // Defaults
-    options.experimental = true;
-    options.playground = true;
-    options.loose = false;
-    options.evaluate = true;
-
-
+    // Merge in defaults and initial options
+    var defaults = {
+      experimental : true,
+      playground : true,
+      loose : false,
+      evaluate : true
+    };
+    softMerge(options, defaults);
+    softMerge(options, initial);
+        
     return options;
   }
 
   /*
    * 6to5 Web REPL
    */
-  function REPL () {
-    var state = UriUtils.parseQuery() || {};
-    
-    if (window.localStorage) {
-        try {
-          var storedState = localStorage.getItem('replState');
-          if (storedState) {
-            state = JSON.parse(storedState);  
-          }
-        } catch(e) {}
+  function REPL (storage) {
+    var state = {};
+    if (storage) {
+      _.assign(state, storage.get('replState'));
     }
-
-    this.options = _.assign(new Options(), state);
+    _.assign(state, UriUtils.parseQuery());
+        
+    this.options = new Options(state);
 
     this.input = new Editor('.to5-repl-input .ace_editor').editor;
     this.input.setValue(UriUtils.decode(state.code || ''));
@@ -225,17 +271,14 @@
 
   REPL.prototype.persistState = function (state) {
     UriUtils.updateQuery(state);
-    if (window.localStorage) {
-        try {
-          window.localStorage.setItem('replState', JSON.stringify(state));
-        } catch(e) {}
-    }
+    storage.set('replState', state);
   };
 
   /*
    * Initialize the REPL
    */
-  var repl = new REPL();
+  var storage = new StorageService();
+  var repl = new REPL(storage);
 
   function onSourceChange () {
     var error;
