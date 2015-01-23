@@ -115,7 +115,7 @@
   }
 
   /*
-   * Soft merge assigns non-null/undefined values in a source 
+   * Soft merge assigns non-undefined values in a source 
    * object into the destination object.  However, objects are only
    * assigned if they already exist in the destination object (
    * otherwise they are dropped);
@@ -124,10 +124,10 @@
     return Object.keys(dest).reduce(function (dest, key) {
       var sourceVal = source[key];
       
-      if (sourceVal !== null && sourceVal !== 'undefined') {
+      if (!_.isUndefined(sourceVal)) {
         dest[key] = sourceVal;
       }
-
+      
       return dest;
     }, dest);
   }
@@ -156,9 +156,10 @@
       loose : false,
       evaluate : true
     };
+    
     softMerge(options, defaults);
     softMerge(options, initial);
-        
+            
     return options;
   }
 
