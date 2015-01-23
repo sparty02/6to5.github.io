@@ -114,6 +114,12 @@
     };
   }
 
+  /*
+   * Soft merge assigns non-null/undefined values in a source 
+   * object into the destination object.  However, objects are only
+   * assigned if they already exist in the destination object (
+   * otherwise they are dropped);
+   */
   function softMerge (dest, source) {
     return Object.keys(dest).reduce(function (dest, key) {
       var sourceVal = source[key];
@@ -126,6 +132,9 @@
     }, dest);
   }
 
+  /*
+   * 6to5 options for transpilation as used by the REPL
+   */
   function Options (initial) {
     var $experimental = $('#option-experimental');
     var $playground = $('#option-playground');
