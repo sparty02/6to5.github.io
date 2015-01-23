@@ -122,6 +122,27 @@
     this.$toolBar = $('.to5-repl-toolbar');
   }
 
+  REPL.prototype.refresh = function () {
+    
+    var code = this.getSource();
+    var transformed;
+
+    this.clearOutput();
+
+    try {
+      transformed = this.compile(code);
+    } catch (err) {
+      this.printError(err.message);
+      throw err;
+    } 
+
+    if (this.options.evaluate) {
+      this.evaluate(transformed.code);
+    }
+
+    this.setOutput(transformed.code);
+  };
+
   REPL.prototype.clearOutput = function () {
     this.$errorReporter.text('');
     this.$consoleReporter.text('');
@@ -139,32 +160,16 @@
     return this.input.getValue();
   };
 
-  REPL.prototype.compile = function () {
-
-    var transformed;
-    var code = this.getSource();
-    this.clearOutput();
-
-    try {
-      transformed = to5.transform(code, {
-        experimental: this.options.experimental,
-        playground: this.options.playground,
-        loose: this.options.loose && "all",
-        filename: 'repl'
-      });
-    } catch (err) {
-      this.printError(err.message);
-      throw err;
-    }
-
-    this.setOutput(transformed.code);
-
-    if (this.options.evaluate) {
-      this.evaluate(transformed.code);
-    }
+  REPL.prototype.compile = function (code) {
+    return to5.transform(code, {
+      experimental: this.options.experimental,
+      playground: this.options.playground,
+      loose: this.options.loose && "all",
+      filename: 'repl'
+    });
   };
 
-  REPL.prototype.evaluate = function(code) {
+  REPL.prototype.evaluate = function (code) {
     var capturingConsole = Object.create(console);
     var $consoleReporter = this.$consoleReporter;
     var buffer = [];
@@ -180,7 +185,7 @@
       if (done) flush();
     }
 
-    capturingConsole.log = function() {
+    capturingConsole.log = function () {
       if (this !== capturingConsole) { return; }
 
       var args = Array.prototype.slice.call(arguments);
@@ -223,24 +228,16 @@
   var repl = new REPL();
 
   function onSourceChange () {
-    var error;
-    try {
-      repl.compile();
-    } catch(err) {
-      error = err;
-    }
     var code = repl.getSource();
-    var state = _.assign(repl.options, {
-      code: code
-    });
+    var state = _.assign(repl.options, { code: code });
+
     repl.persistState(state);
-    if (error) throw error;
+    repl.refresh();
   }
 
   repl.input.on('change', _.debounce(onSourceChange, 500));
   repl.$toolBar.on('change', onSourceChange);
 
-  repl.compile();
-
+  repl.refresh();
 
 }(to5, $, _, ace, window));
