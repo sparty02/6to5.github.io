@@ -16,10 +16,29 @@
   UriUtils.parseQuery = function () {
     var query = window.location.hash.replace(/^\#\?/, '');
 
-    if (!query) {
-      return null;
-    }
+    return query ? this.parseParams(query) : null;
+  };
   
+  UriUtils.updateQuery = function () {
+    var args = argify(arguments);
+    var paramString;
+    
+    if (_.isObject(args)) {
+      paramString = this.paramify(args);
+    }
+
+    var query = this.parseQuery();
+
+    window.location.hash = '?' + this.paramify(object);
+  };
+
+  UriUtils.paramify = function (object) {
+    var query = Object.keys(object).map(function(key){
+      return key + '=' + UriUtils.encode(object[key]);
+    }).join('&');    
+  };
+
+  UriUtils.parseParams = function (query) {
     return query.split('&').map(function(param) {
       var splitPoint = param.indexOf('=');
 
@@ -35,13 +54,9 @@
     }, {});
   };
 
-  UriUtils.updateQuery = function (object) {
-    var query = Object.keys(object).map(function(key){
-      return key + '=' + UriUtils.encode(object[key]);
-    }).join('&');
-
-    window.location.hash = '?' + query;
-  };
+  function argify() {
+    return Array.prototype.slice.call(arguments, 1);
+  }
 
   /*
    * Long term storage for persistence of state/etc
@@ -72,6 +87,9 @@
         storage.setItem(key, json);
       } catch(e) {}
     }
+
+
+    UriUtils.updateQuery(state);
   };
 
   /*
@@ -262,7 +280,6 @@
   };
 
   REPL.prototype.persistState = function (state) {
-    UriUtils.updateQuery(state);
     storage.set('replState', state);
   };
 
